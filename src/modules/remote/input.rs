@@ -235,6 +235,7 @@ fn string_to_key(s: &str) -> Key {
         "Meta" => Key::Meta,
         "LMeta" => Key::Meta,
         "RMeta" => Key::Meta,
+        "Win" => Key::Meta,
         "Kana" => Key::Kana,
         "Convert" => Key::Convert,
         "NonConvert" => Key::NonConvert,

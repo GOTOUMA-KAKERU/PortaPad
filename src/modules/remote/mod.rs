@@ -31,6 +31,23 @@ use winapi::um::winuser;
 
 type WsSink = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 
+fn normalize_signal_url(input: &str) -> String {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return "wss://localhost:8443".to_string();
+    }
+    if trimmed.starts_with("ws://") || trimmed.starts_with("wss://") {
+        return trimmed.to_string();
+    }
+    if trimmed.starts_with("http://") {
+        return format!("ws://{}", trimmed.trim_start_matches("http://"));
+    }
+    if trimmed.starts_with("https://") {
+        return format!("wss://{}", trimmed.trim_start_matches("https://"));
+    }
+    format!("wss://{}", trimmed)
+}
+
 #[derive(Serialize)]
 struct IceCandidateMsg {
     candidate: String,
@@ -72,11 +89,13 @@ pub async fn remote_main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let (ws_stream, _) = match connect_async(format!("wss://{}", CONFIG.sigserver)).await {
+    let primary_sig_url = normalize_signal_url(&CONFIG.sigserver);
+    let secondary_sig_url = normalize_signal_url(&CONFIG.sec_sigserver);
+    let (ws_stream, _) = match connect_async(primary_sig_url.clone()).await {
         Ok(stream) => stream,
         Err(err) => {
             eprintln!("WebSocket 接続エラー: {:?}", err);
-            match connect_async(format!("wss://{}", CONFIG.sec_sigserver)).await {
+            match connect_async(secondary_sig_url.clone()).await {
                 Ok(stream) => {
                     println!("予備サーバーへの接続に成功しました");
                     stream
